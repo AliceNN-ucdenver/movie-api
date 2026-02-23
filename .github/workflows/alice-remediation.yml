@@ -1,0 +1,295 @@
+name: "AI Remediation"
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  # Phase 1: Analysis & Planning
+  analyze-and-plan:
+    name: "Analysis & Planning"
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue &&
+      (contains(github.event.comment.body, '@claude') || contains(github.event.comment.body, '@alice')) &&
+      !contains(github.event.comment.body, 'approved') &&
+      !contains(github.event.comment.body, 'go ahead') &&
+      !contains(github.event.comment.body, 'implement this') &&
+      !contains(github.event.comment.body, 'looks good') &&
+      (contains(github.event.issue.labels.*.name, 'codeql-finding') || contains(github.event.issue.labels.*.name, 'rctro-feature') || contains(github.event.issue.labels.*.name, 'ci-failure'))
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+      id-token: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Extract issue details
+      id: issue_details
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = context.payload.issue;
+          const comment = context.payload.comment;
+          const labels = issue.labels.map(l => l.name);
+          core.setOutput('issue_number', issue.number);
+          core.setOutput('issue_title', issue.title);
+          core.setOutput('issue_body', issue.body);
+          core.setOutput('comment_body', comment.body);
+          core.setOutput('comment_user', comment.user.login);
+          core.setOutput('is_ci_failure', labels.includes('ci-failure') ? 'true' : 'false');
+
+    - name: Claude Code Analysis & Planning
+      uses: anthropics/claude-code-action@v1
+      with:
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        track_progress: true
+        additional_permissions: |
+          actions: read
+        prompt: |
+          # Remediation — Analysis & Planning
+
+          ## Context
+          - **Repository**: ${{ github.repository }}
+          - **Issue**: #${{ steps.issue_details.outputs.issue_number }}
+          - **Requested by**: @${{ steps.issue_details.outputs.comment_user }}
+          - **Issue type**: ${{ steps.issue_details.outputs.is_ci_failure == 'true' && 'CI Test Failure' || 'Feature / Security Finding' }}
+
+          ## Issue Details
+          ${{ steps.issue_details.outputs.issue_body }}
+
+          ## Instructions by issue type
+
+          **If this is a CI Test Failure** (ci-failure label):
+          - The issue body contains a list of failing tests with error messages
+          - Read the failing test files and the source code they test
+          - Identify the root cause of each failure
+          - Create a plan to fix the failures while keeping passing tests green
+          - Do NOT change test expectations unless the tests themselves are wrong
+
+          **If this is a Feature or Security Finding** (rctro-feature / codeql-finding label):
+          - The issue body contains an RCTRO prompt with guidance sections
+          - Read the RCTRO prompt and all collapsed guidance sections
+          - Create a detailed implementation plan based on the requirements
+
+          ## Your Task
+          Create a detailed implementation plan.
+          Post the plan as a comment. Do NOT implement yet.
+
+          ## Approval
+          After posting, wait for: `@claude approved`
+
+        claude_args: |
+          --allowedTools "Read,Glob,Grep,Bash(gh issue comment:*)"
+
+    - name: Label issue as planning
+      if: success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: ${{ steps.issue_details.outputs.issue_number }},
+            labels: ['remediation-planning']
+          });
+
+  # Phase 2: Implementation (triggered by approval)
+  implement-fix:
+    name: "Implementation"
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue &&
+      (contains(github.event.comment.body, '@claude') || contains(github.event.comment.body, '@alice')) &&
+      (
+        contains(github.event.comment.body, 'approved') ||
+        contains(github.event.comment.body, 'go ahead') ||
+        contains(github.event.comment.body, 'implement this') ||
+        contains(github.event.comment.body, 'looks good')
+      ) &&
+      (contains(github.event.issue.labels.*.name, 'codeql-finding') || contains(github.event.issue.labels.*.name, 'rctro-feature') || contains(github.event.issue.labels.*.name, 'ci-failure'))
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+      id-token: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure Git
+      run: |
+        git config user.name "claude-code[bot]"
+        git config user.email "claude-code[bot]@users.noreply.github.com"
+
+    - name: Extract issue details
+      id: issue_details
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issue = context.payload.issue;
+          const comment = context.payload.comment;
+          const labels = issue.labels.map(l => l.name);
+          core.setOutput('issue_number', issue.number);
+          core.setOutput('issue_title', issue.title);
+          core.setOutput('issue_body', issue.body);
+          core.setOutput('comment_body', comment.body);
+          core.setOutput('comment_user', comment.user.login);
+          core.setOutput('is_ci_failure', labels.includes('ci-failure') ? 'true' : 'false');
+
+    - name: Label issue as in-progress
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.issues.removeLabel({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: ${{ steps.issue_details.outputs.issue_number }},
+            name: 'remediation-planning'
+          }).catch(() => {});
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: ${{ steps.issue_details.outputs.issue_number }},
+            labels: ['remediation-in-progress']
+          });
+
+    - name: Claude Code Implementation
+      uses: anthropics/claude-code-action@v1
+      with:
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        track_progress: true
+        additional_permissions: |
+          actions: read
+        prompt: |
+          # Remediation — Approved
+
+          ## Context
+          - **Repository**: ${{ github.repository }}
+          - **Issue**: #${{ steps.issue_details.outputs.issue_number }}
+          - **Approved by**: @${{ steps.issue_details.outputs.comment_user }}
+          - **Issue type**: ${{ steps.issue_details.outputs.is_ci_failure == 'true' && 'CI Test Failure' || 'Feature / Security Finding' }}
+
+          ## Issue Details
+          ${{ steps.issue_details.outputs.issue_body }}
+
+          ## Your Task
+          Implement the approved plan from the issue comments.
+          1. Create a branch named `fix/issue-${{ steps.issue_details.outputs.issue_number }}`
+          2. Implement the fix (for CI failures: fix the source code so tests pass; for features: follow the RCTRO prompt)
+          3. Run tests and lint — all tests must pass
+          4. Commit with AI disclosure label
+          5. Push the branch and create a PR:
+             ```bash
+             git push origin fix/issue-${{ steps.issue_details.outputs.issue_number }}
+             gh pr create --title "Fix: #${{ steps.issue_details.outputs.issue_number }}" \
+               --body "Closes #${{ steps.issue_details.outputs.issue_number }}" \
+               --base main
+             ```
+
+        claude_args: |
+          --allowedTools "Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(gh:*),Read,Edit,Write,Glob,Grep"
+
+    - name: Find Claude's branch and create PR if needed
+      if: success()
+      id: create-pr
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issueNumber = ${{ steps.issue_details.outputs.issue_number }};
+          const issueTitle = `${{ steps.issue_details.outputs.issue_title }}`;
+
+          // Check if Claude already created a PR (via gh pr create in its prompt)
+          const { data: existingPrs } = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            per_page: 10,
+          });
+          const linkedPr = existingPrs.find(pr =>
+            pr.body?.includes(`#${issueNumber}`) ||
+            pr.head.ref.includes(`issue-${issueNumber}`)
+          );
+          if (linkedPr) {
+            core.info(`PR already exists: #${linkedPr.number} (${linkedPr.html_url})`);
+            core.setOutput('pr_url', linkedPr.html_url);
+            core.setOutput('pr_number', linkedPr.number);
+            return;
+          }
+
+          // Find the branch Claude pushed (could be fix/issue-N, claude/issue-N-*, etc.)
+          const { data: branches } = await github.rest.repos.listBranches({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            per_page: 50,
+          });
+          const candidateBranch = branches.find(b =>
+            b.name === `fix/issue-${issueNumber}` ||
+            b.name.match(new RegExp(`(claude|fix)[/-].*issue-${issueNumber}`))
+          );
+
+          if (!candidateBranch) {
+            core.warning(`No branch found for issue #${issueNumber}. Skipping PR creation.`);
+            return;
+          }
+
+          core.info(`Found branch: ${candidateBranch.name}`);
+          const { data: pr } = await github.rest.pulls.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Fix: ${issueTitle}`,
+            body: `Closes #${issueNumber}\n\nGenerated by AI Remediation workflow.`,
+            head: candidateBranch.name,
+            base: 'main',
+          });
+          core.info(`Created PR #${pr.number}: ${pr.html_url}`);
+          core.setOutput('pr_url', pr.html_url);
+          core.setOutput('pr_number', pr.number);
+
+    - name: Post implementation summary
+      if: success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issueNumber = ${{ steps.issue_details.outputs.issue_number }};
+          const prUrl = '${{ steps.create-pr.outputs.pr_url }}' || '';
+          let body = '## Remediation Complete\n\nImplementation has been committed and pushed.';
+          if (prUrl) {
+            body += `\n\n**PR**: ${prUrl}`;
+          }
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: issueNumber,
+            body,
+          });
+
+    - name: Label issue as complete
+      if: success()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.issues.removeLabel({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: ${{ steps.issue_details.outputs.issue_number }},
+            name: 'remediation-in-progress'
+          }).catch(() => {});
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: ${{ steps.issue_details.outputs.issue_number }},
+            labels: ['remediation-complete']
+          });

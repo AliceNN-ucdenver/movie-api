@@ -1,0 +1,77 @@
+name: "CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.js'
+      - '**/*.ts'
+      - '**/*.jsx'
+      - '**/*.tsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.js'
+      - '**/*.ts'
+      - '**/*.jsx'
+      - '**/*.tsx'
+      - '**/*.mjs'
+      - '**/*.cjs'
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['javascript-typescript']
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Check for source files
+      id: check-source
+      run: |
+        if find . -name '*.ts' -o -name '*.js' -o -name '*.tsx' -o -name '*.jsx' | grep -q .; then
+          echo "has_source=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_source=false" >> "$GITHUB_OUTPUT"
+          echo "No JavaScript/TypeScript source files found — skipping analysis."
+        fi
+
+    - name: Initialize CodeQL
+      if: steps.check-source.outputs.has_source == 'true'
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-extended
+
+    - name: Autobuild
+      if: steps.check-source.outputs.has_source == 'true'
+      uses: github/codeql-action/autobuild@v4
+
+    - name: Perform CodeQL Analysis
+      if: steps.check-source.outputs.has_source == 'true'
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{ matrix.language }}"
+        output: sarif-results
+
+    - name: Upload SARIF artifact
+      if: steps.check-source.outputs.has_source == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-sarif
+        path: sarif-results/**/*.sarif
+        retention-days: 5
