@@ -5,7 +5,10 @@ const { stripHtml, validateUrl } = require('../utils/sanitize');
 
 const actorSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 100 },
-  birthYear: { type: Number, min: 1850, max: new Date().getFullYear() },
+  birthYear: {
+    type: Number, min: 1850,
+    validate: { validator: (v) => v == null || v <= new Date().getFullYear(), message: 'Birth year cannot be in the future' }
+  },
   bio: { type: String, maxlength: 5000 },
   headshotUrl: { type: String }
 });

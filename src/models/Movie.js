@@ -19,7 +19,10 @@ const castMemberSchema = new mongoose.Schema({
 
 const movieSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 200 },
-  year: { type: Number, required: true, min: 1888, max: new Date().getFullYear() + 5 },
+  year: {
+    type: Number, required: true, min: 1888,
+    validate: { validator: (v) => v <= new Date().getFullYear() + 5, message: 'Year is too far in the future' }
+  },
   genre: [{ type: String, enum: VALID_GENRES }],
   director: { type: String, trim: true, maxlength: 100 },
   plot: { type: String, maxlength: 5000 },
