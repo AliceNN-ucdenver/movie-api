@@ -1,0 +1,36 @@
+{
+  "name": "movie-api",
+  "version": "1.0.0",
+  "description": "Movie API with CRUD endpoints, JWT auth, and RBAC",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "NODE_ENV=test npx mocha --recursive 'test/**/*.test.js'",
+    "lint": "eslint src test --ext .js",
+    "coverage": "nyc npm test"
+  },
+  "dependencies": {
+    "bcrypt": "5.1.1",
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.18.2",
+    "express-rate-limit": "7.1.5",
+    "helmet": "7.1.0",
+    "jsonwebtoken": "9.0.2",
+    "mongoose": "8.1.1",
+    "uuid": "9.0.0",
+    "winston": "3.11.0"
+  },
+  "devDependencies": {
+    "chai": "4.4.1",
+    "eslint": "8.56.0",
+    "mocha": "10.3.0",
+    "mongodb-memory-server": "9.1.6",
+    "nyc": "15.1.0",
+    "supertest": "6.3.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
