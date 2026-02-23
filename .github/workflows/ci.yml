@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if [ -f package.json ]; then npx mocha --exit --reporter json 2>&1 | tee test-output.txt; fi
+          if [ -f package.json ]; then NODE_ENV=test npx mocha --exit --reporter json --recursive 'test/**/*.test.js' 2>&1 | tee test-output.txt; fi
         continue-on-error: true
 
       - name: Create or update failure issue

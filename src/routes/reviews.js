@@ -56,6 +56,9 @@ router.delete('/:id', authenticate, validateObjectId('id'), async (req, res, nex
       if (!review) return res.status(404).json({ error: 'Not Found', message: 'Review not found' });
       return res.json({ message: 'Review deleted' });
     }
+    if (req.user.role !== 'user') {
+      return res.status(403).json({ error: 'Forbidden', message: 'Insufficient permissions' });
+    }
     // Non-admin users can only delete their own reviews
     const review = await Review.findById(req.params.id);
     if (!review) return res.status(404).json({ error: 'Not Found', message: 'Review not found' });

@@ -13,8 +13,8 @@ steps:
     run: if [ -f package.json ]; then npm ci || npm install; fi
   - name: Pre-cache MongoDB binary (for MongoMemoryServer)
     run: |
-      if grep -q "mongodb-memory-server" package.json 2>/dev/null; then
-        npx mongodb-memory-server --download-only 2>/dev/null || true
-      fi
+      # Ensure mongodb-memory-server binary is cached before network restrictions apply
+      npm install mongodb-memory-server 2>/dev/null || true
+      node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); MongoMemoryServer.create().then(s => s.stop()).catch(() => {})" 2>/dev/null || true
     continue-on-error: true
 
