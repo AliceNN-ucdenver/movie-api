@@ -6,13 +6,13 @@ on:
     paths:
       - 'prompts/**/*.md'
       - 'automation/prompt-hashes.json'
-      - 'automation/generate-prompt-hashes.js'
+      - 'automation/generate-prompt-hashes.cjs'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'prompts/**/*.md'
       - 'automation/prompt-hashes.json'
-      - 'automation/generate-prompt-hashes.js'
+      - 'automation/generate-prompt-hashes.cjs'
 
 jobs:
   validate-hashes:
@@ -29,7 +29,7 @@ jobs:
         node-version: '20'
 
     - name: Generate fresh hashes
-      run: node automation/generate-prompt-hashes.js
+      run: node automation/generate-prompt-hashes.cjs
 
     - name: Check for hash mismatches
       run: |
@@ -41,7 +41,7 @@ jobs:
           git diff automation/prompt-hashes.json
           echo ""
           echo "To fix this:"
-          echo "   1. Run: node automation/generate-prompt-hashes.js"
+          echo "   1. Run: node automation/generate-prompt-hashes.cjs"
           echo "   2. Commit the updated prompt-hashes.json"
           echo "   3. Push the changes"
           exit 1

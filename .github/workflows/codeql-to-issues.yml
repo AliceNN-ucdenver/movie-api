@@ -14,6 +14,11 @@ on:
         description: 'Maximum number of issues to create per run'
         required: false
         default: '10'
+      auto_assign_alice:
+        description: 'Auto-dispatch the Alice maintenance agent on each new finding (otherwise issues are filed unassigned and you assign Alice from the Security Scorecard)'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   create-issues:
@@ -35,7 +40,7 @@ jobs:
         node-version: '20'
 
     - name: Install dependencies
-      run: npm install --no-save @octokit/rest axios
+      run: npm install --no-save @octokit/rest
       working-directory: .
 
     - name: Download CodeQL SARIF
@@ -80,7 +85,7 @@ jobs:
         fi
         ls -la codeql-results.sarif
 
-    - name: Process CodeQL Results
+    - name: Process CodeQL Results & dispatch Alice
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_REPOSITORY: ${{ github.repository }}
@@ -89,11 +94,15 @@ jobs:
         SARIF_PATH: 'codeql-results.sarif'
         SEVERITY_THRESHOLD: ${{ github.event.inputs.severity_threshold || 'high' }}
         MAX_ISSUES_PER_RUN: ${{ github.event.inputs.max_issues_per_run || '10' }}
-        ENABLE_MAINTAINABILITY: 'true'
-        ENABLE_THREAT_MODEL: 'true'
-        PROMPT_REPO: 'AliceNN-ucdenver/MaintainabilityAI'
-        PROMPT_BRANCH: 'main'
-      run: node automation/process-codeql-results.js
+        # Auto-dispatch Alice on each new finding? Defaults to FALSE — issues are
+        # filed unassigned and you trigger Alice from the Security Scorecard's
+        # maintenance-issues list. Only the manual workflow_dispatch can opt in;
+        # the automatic workflow_run trigger always leaves it false.
+        AUTO_ASSIGN_ALICE: ${{ github.event.inputs.auto_assign_alice || 'false' }}
+        # The custom Copilot persona dispatched when AUTO_ASSIGN_ALICE is true.
+        # Matches the scaffolded .github/agents/<name>.agent.md.
+        MAINTENANCE_AGENT: 'alice-maintenance-agent'
+      run: node automation/process-codeql-results.cjs
 
     - name: Upload processing logs
       uses: actions/upload-artifact@v4
