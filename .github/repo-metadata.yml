@@ -3,3 +3,8 @@ language: JavaScript
 module_system: CommonJS
 testing: Mocha
 package_manager: npm
+fitness:
+  duplicate: jscpd
+  dead-code: knip
+  complexity: eslint-complexity
+  architecture: dependency-cruiser
