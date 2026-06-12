@@ -279,9 +279,16 @@ function validate(input) {
     };
   }
 
+  // A break-glass grant IS the recorded human approval, so it satisfies
+  // requireApproval (TIER-003) the same way it flips TIER-001/002. Without
+  // this, a grant let the agent Write new files but not Edit existing ones —
+  // incoherent for remediation, since most fixes (e.g. parameterizing a SQL
+  // query) edit existing code. SEC-001 / CTRL-001 still gate the path below.
+  const tierBg = activeBreakGlass();
   const hasApproval = process.env.REDQUEEN_TOOL_APPROVED === 'true' ||
     process.env.REDQUEEN_PLAN_APPROVED === 'true' ||
-    toolInput.redqueenApproved === true;
+    toolInput.redqueenApproved === true ||
+    !!tierBg;
   if (tierRules && tierRules.requireApproval && tierRules.requireApproval.includes(toolName)) {
     if (!hasApproval) {
       return {
@@ -289,7 +296,8 @@ function validate(input) {
         ruleId: 'TIER-003',
         reason:
           '[Red Queen] Tool "' + toolName + '" requires approval for ' + tier +
-          '-tier BARs. Record approval with REDQUEEN_TOOL_APPROVED=true or toolInput.redqueenApproved=true.',
+          '-tier BARs. Record approval with REDQUEEN_TOOL_APPROVED=true, ' +
+          'toolInput.redqueenApproved=true, or grant a break-glass.',
       };
     }
     // Approval flipped a would-be TIER-003 deny into an allow. Override
@@ -299,7 +307,7 @@ function validate(input) {
     if (!pendingOverride) {
       pendingOverride = {
         bypassedRuleId: 'TIER-003',
-        approvalSource: approvalSourceLabel(),
+        approvalSource: tierBg ? breakGlassSource(tierBg) : approvalSourceLabel(),
       };
     }
   }
