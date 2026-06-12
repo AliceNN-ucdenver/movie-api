@@ -1,0 +1,9 @@
+{
+  "_comment": "floor is governance-managed. Raise it only via a reviewed PR with explicit justification. The fitness test will fail if measured > floor.",
+  "duplicate": {
+    "_comment": "floor is governance-managed. Raise it only via a reviewed PR with explicit justification. The fitness test will fail if measured > floor.",
+    "floor": 0,
+    "target": 0,
+    "measured": 0
+  }
+}
