@@ -96,9 +96,13 @@ jobs:
         MAX_ISSUES_PER_RUN: ${{ github.event.inputs.max_issues_per_run || '10' }}
         # Auto-dispatch Alice on each new finding? Defaults to FALSE — issues are
         # filed unassigned and you trigger Alice from the Security Scorecard's
-        # maintenance-issues list. Only the manual workflow_dispatch can opt in;
-        # the automatic workflow_run trigger always leaves it false.
-        AUTO_ASSIGN_ALICE: ${{ github.event.inputs.auto_assign_alice || 'false' }}
+        # maintenance-issues list. Resolution order:
+        #   1. the manual workflow_dispatch checkbox (per-run override), then
+        #   2. the `AUTO_ASSIGN_ALICE` repo Actions variable (the persistent
+        #      toggle on the Scorecard's settings — also honored on the
+        #      automatic workflow_run trigger), then
+        #   3. false.
+        AUTO_ASSIGN_ALICE: ${{ github.event.inputs.auto_assign_alice || vars.AUTO_ASSIGN_ALICE || 'false' }}
         # The custom Copilot persona dispatched when AUTO_ASSIGN_ALICE is true.
         # Matches the scaffolded .github/agents/<name>.agent.md.
         MAINTENANCE_AGENT: 'alice-maintenance-agent'
