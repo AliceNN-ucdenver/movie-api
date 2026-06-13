@@ -4,10 +4,10 @@ const mongoose = require('mongoose');
 const { stripHtml } = require('../utils/sanitize');
 
 const recommendationSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   personalizationStatus: { type: String, enum: ['personalized', 'cold_start'], required: true },
   modelVersion: { type: String, required: true, default: 'item-cf-v1' },
-  generatedAt: { type: Date, required: true, default: Date.now, index: true },
+  generatedAt: { type: Date, required: true, default: Date.now },
   recommendations: [{
     movieId: { type: mongoose.Schema.Types.ObjectId, ref: 'Movie', required: true },
     score: { type: Number, required: true, min: 0 },
