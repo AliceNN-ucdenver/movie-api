@@ -43,4 +43,16 @@ const writeLimiter = rateLimit({
   }
 });
 
-module.exports = { globalLimiter, authLimiter, writeLimiter };
+const recommendationsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too Many Requests', message: 'Recommendation rate limit exceeded' },
+  handler: (req, res, _next, options) => {
+    onLimitReached(req);
+    res.status(429).set('Retry-After', Math.ceil(options.windowMs / 1000)).json(options.message);
+  }
+});
+
+module.exports = { globalLimiter, authLimiter, writeLimiter, recommendationsLimiter };

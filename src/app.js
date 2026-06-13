@@ -8,6 +8,8 @@ const { requestLogger } = require('./middleware/requestLogger');
 const { errorHandler } = require('./middleware/errorHandler');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const { stripNoSqlOperators } = require('./utils/sanitize');
+const { loadRecommendationsConfig } = require('./config/recommendations');
+const { createRecommendationRefreshJob } = require('./jobs/recommendationRefreshJob');
 const routes = require('./routes/index');
 
 const app = express();
@@ -41,7 +43,20 @@ app.use((req, _res, next) => {
 app.use(requestLogger);
 app.use(globalLimiter);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+const recommendationConfig = loadRecommendationsConfig();
+if (recommendationConfig.enabled && process.env.NODE_ENV !== 'test') {
+  const recommendationRefreshJob = createRecommendationRefreshJob();
+  recommendationRefreshJob.start();
+  app.locals.recommendationRefreshJob = recommendationRefreshJob;
+}
+
+app.get('/health', (_req, res) => {
+  const body = { status: 'ok' };
+  if (process.env.NODE_ENV !== 'production' && app.locals.recommendationRefreshJob) {
+    body.recommendationsScheduler = app.locals.recommendationRefreshJob.getStatus();
+  }
+  res.json(body);
+});
 
 app.use('/api', routes);
 

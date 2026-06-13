@@ -4,8 +4,10 @@ const express = require('express');
 const Movie = require('../models/Movie');
 const { authenticate } = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
-const { validateObjectId, validatePagination } = require('../middleware/validate');
+const { recommendationsLimiter } = require('../middleware/rateLimiter');
+const { validateObjectId, validatePagination, validateRecommendationQuery } = require('../middleware/validate');
 const { stripNoSqlOperators } = require('../utils/sanitize');
+const { getRecommendationsForUser } = require('../services/recommendationService');
 
 const router = express.Router();
 
@@ -34,6 +36,30 @@ router.get('/search', async (req, res, next) => {
     res.json({ data: movies });
   } catch (err) { next(err); }
 });
+
+router.get(
+  '/recommendations',
+  authenticate,
+  authorize('viewer', 'user', 'admin'),
+  recommendationsLimiter,
+  validateRecommendationQuery(),
+  async (req, res, next) => {
+    try {
+      const response = await getRecommendationsForUser({
+        userId: req.user.userId,
+        limit: req.query.limit,
+        experimentArm: req.query.experimentArm,
+        tamperingAttempt: req.recommendationTampering
+      });
+      res.status(200).json(response);
+    } catch (err) {
+      if (err.statusCode === 503 && err.retryAfter) {
+        res.set('Retry-After', String(err.retryAfter));
+      }
+      next(err);
+    }
+  }
+);
 
 router.get('/:id', validateObjectId('id'), async (req, res, next) => {
   try {
