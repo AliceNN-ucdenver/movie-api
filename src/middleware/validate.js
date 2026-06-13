@@ -37,4 +37,36 @@ function validatePagination(allowedSortFields = []) {
   };
 }
 
-module.exports = { validateObjectId, validatePagination };
+function validateRecommendationQuery() {
+  return (req, res, next) => {
+    const defaultLimit = parseInt(process.env.RECOMMENDATIONS_DEFAULT_LIMIT || '20', 10);
+    const maxLimit = parseInt(process.env.RECOMMENDATIONS_MAX_LIMIT || '50', 10);
+    const limitRaw = req.query.limit;
+    const limit = limitRaw == null ? defaultLimit : parseInt(limitRaw, 10);
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > maxLimit) {
+      logger.warn('VALIDATION_FAILURE', { param: 'limit', value: limitRaw, path: req.path });
+      return res.status(400).json({ error: 'Bad Request', message: `limit must be an integer between 1 and ${maxLimit}` });
+    }
+
+    const allowedArms = ['control', 'personalized'];
+    const experimentArm = req.query.experimentArm;
+    if (experimentArm && !allowedArms.includes(experimentArm)) {
+      logger.warn('VALIDATION_FAILURE', { param: 'experimentArm', value: experimentArm, path: req.path });
+      return res.status(400).json({ error: 'Bad Request', message: 'experimentArm must be one of: control, personalized' });
+    }
+
+    req.query.limit = limit;
+    if (!experimentArm) delete req.query.experimentArm;
+
+    const hasQueryOverride = Object.prototype.hasOwnProperty.call(req.query, 'userId');
+    const hasBodyOverride = req.body && Object.prototype.hasOwnProperty.call(req.body, 'userId');
+    req.recommendationTampering = Boolean(hasQueryOverride || hasBodyOverride);
+    if (hasQueryOverride) delete req.query.userId;
+    if (hasBodyOverride) delete req.body.userId;
+
+    next();
+  };
+}
+
+module.exports = { validateObjectId, validatePagination, validateRecommendationQuery };

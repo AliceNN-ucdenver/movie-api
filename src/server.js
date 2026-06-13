@@ -16,6 +16,9 @@ async function start() {
   function shutdown(signal) {
     logger.info(`Received ${signal}, shutting down gracefully`);
     server.close(async () => {
+      if (app.locals.recommendationRefreshJob) {
+        app.locals.recommendationRefreshJob.stop();
+      }
       const mongoose = require('mongoose');
       await mongoose.connection.close();
       logger.info('Server closed');
