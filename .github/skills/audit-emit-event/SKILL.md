@@ -72,7 +72,7 @@ echo '{"okrId":"...", "runId":"...", "eventKind":"skill_call", "payload":{"skill
 
 ## Implementation
 
-Wraps `packages/research-runner/src/runner/audit-emitter.ts`. The on-disk envelope schema is defined by `packages/research-runner/src/schemas/audit-event.ts`. 3 retries with backoff on file-lock contention; on terminal failure, logs to stderr and exits non-zero — `verify-chain` (Phase E) recovers post-hoc. CLI subcommand backend lands in B-PR1a.
+Implemented by the `audit-emit-event` handler in `packages/research-runner/src/runner/skills.ts`. The CLI input schema (`AuditEmitInput`) and the on-disk event envelope — `event_kind` (per the `EVENT_KIND_ORIGIN` map) + hash chain (`prev_event_hash`/`event_hash`) + per-epoch Ed25519 `signature`/`signer_epoch` — are defined inline in that same file. 3 retries with backoff on file-lock contention; on terminal failure, logs to stderr and exits non-zero — `audit-verify-chain` (Phase E) recovers post-hoc.
 
 ### Codex-r3 Bug 1 — implementation-phase path routing
 

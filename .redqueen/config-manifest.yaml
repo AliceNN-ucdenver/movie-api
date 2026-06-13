@@ -2,7 +2,7 @@
 # Auto-generated — do not edit manually
 # Re-generate with: redqueen scaffold --bar "IMDB Lite Application"
 
-generated_at: "2026-06-12T22:00:50.266Z"
+generated_at: "2026-06-13T21:06:22.248Z"
 bar_id: APP-IMDB-001
 bar_name: "IMDB Lite Application"
 mesh_path: "./governance-mesh"
@@ -24,7 +24,7 @@ files:
   - path: ".redqueen/hooks/validate-tool.sh"
     sha256: cbf3735d8174f9fea0af1caa599eb5e9129b19dc380d169c8608566c66165643
   - path: ".redqueen/policy.json"
-    sha256: 8784535bab62013405db888b1ecafc544861c4efef7194ecf2db76b699f58eaf
+    sha256: 82a56def58ec41a4d660d548039467b82f85f57fa403a39a027f163b794e8faa
   - path: ".github/hooks/redqueen.json"
     sha256: 5d911666304ab3362933254c57a4f0b7c2b18301f0dd52c28499ce0711d989dc
   - path: ".github/workflows/impl-provenance.yml"
@@ -36,7 +36,7 @@ files:
   - path: ".github/skills/knowledge-code-read/SKILL.md"
     sha256: f273f5c9d9c6ee2381ea9078f2533a810c040f00a5e1147923b279808bbddfd5
   - path: ".github/skills/audit-emit-event/SKILL.md"
-    sha256: a2072b12a40cb2b34e260153d552e577afdf3a6698c175dfac24052e7c166631
+    sha256: d125db682999c02e41cf2a9d7b206e78fbd1147caa64ed96d3b7ea12d11c0436
   - path: ".github/skills/self-review-impl-architect/SKILL.md"
     sha256: bdc8b0a2d9254e1dd7311e254645c76a9eaebd7d969a50da2c0d673863851fa3
   - path: ".github/skills/self-review-impl-security/SKILL.md"

@@ -39,7 +39,8 @@
       ".claude/**",
       "AGENTS.md",
       ".redqueen/**",
-      ".github/hooks/**"
+      ".github/hooks/**",
+      "**/fitness/baselines.json"
     ],
     "allowedConnections": [
       {
